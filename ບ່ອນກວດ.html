@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+    <meta charset="UTF-8">
+    <title>ระบบตรวจข้อสอบ - สำหรับอาจารย์</title>
+    <link href="https://fonts.googleapis.com/css2?family=Phetsarath&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body, input, button { font-family: 'Phetsarath', 'Noto Sans', sans-serif; }
+        body { padding: 20px; max-width: 800px; margin: 0 auto; background: #f9f9f9; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .ans-box { background: #f0f4f8; padding: 10px; border-left: 4px solid #007bff; margin: 5px 0 15px 0; }
+        input[type="number"] { width: 60px; padding: 5px; font-size: 16px; }
+        .save-btn { background-color: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+        .refresh-btn { background-color: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <h2>👨‍🏫 หน้าสำหรับอาจารย์ตรวจข้อสอบ (Teacher Portal)</h2>
+    <button class="refresh-btn" onclick="loadSubmissions()">🔄 ໂຫຼດຂໍ້ມູນໃໝ່ (Refresh)</button>
+    <div id="examContent">ກຳລັງໂຫຼດຂໍ້ມູນ...</div>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbwr7GxuI_ddPRrf6qog1Wl-IVhGQqhq9X7qpSYiHEgevql9_P4fuokj3NYauSnTQaW8Ug/exec";
+
+        async function loadSubmissions() {
+            const container = document.getElementById('examContent');
+            container.innerHTML = "<p>ກຳລັງໂຫຼດຂໍ້ມູນ...</p>";
+
+            try {
+                const res = await fetch(API_URL);
+                const list = await res.json();
+
+                if (!list || list.length === 0) {
+                    container.innerHTML = "<p>ຍັງບໍ່ທັນມີນັກຮຽນສົ່ງຄຳຕອບເຂົ້າມາ</p>";
+                    return;
+                }
+
+                container.innerHTML = "";
+                // แสดงผลเรียงจากคนส่งล่าสุดขึ้นก่อน
+                list.reverse().forEach((data, index) => {
+                    const cardHtml = `
+                        <div class="card">
+                            <h3>ນັກຮຽນ: ${data.name} (ຫ້ອງ ${data.className})</h3>
+                            <p><small>ເວລາທີ່ສົ່ງ: ${new Date(data.submittedAt).toLocaleString()}</small></p>
+                            <p><b>ຄະແນນປາລະໄນ (Choice):</b> ${data.choiceScore} / 3 ຄະແນນ</p>
+                            <hr>
+                            <h4>📝 ກວດຂໍ້ຂຽນ</h4>
+                            
+                            <p><b>ຂໍ້ 1: ຄອມພິວເຕີໝາຍເຖິງຫຍັງ?</b></p>
+                            <div class="ans-box">${data.ans1}</div>
+                            ໃຫ້ຄະແນນຂໍ້ 1 (0-1 ຄະແນນ): <input type="number" id="s1_${index}" min="0" max="1" value="0">
+
+                            <p><b>ຂໍ້ 2: ຊອບແວໝາຍເຖິງຫຍັງ?</b></p>
+                            <div class="ans-box">${data.ans2}</div>
+                            ໃຫ້ຄະແນນຂໍ້ 2 (0-1 ຄະແນນ): <input type="number" id="s2_${index}" min="0" max="1" value="0">
+
+                            <p><b>ຂໍ້ 3: ຄອມພິວເຕີຈຳແນກອອກເປ໊ນ 4 ຊະນິດຄື:</b></p>
+                            <div class="ans-box">${data.ans3}</div>
+                            ໃຫ້ຄະແນນຂໍ້ 3 (0-1 ຄະແນນ): <input type="number" id="s3_${index}" min="0" max="1" value="0">
+
+                            <br><br>
+                            <button class="save-btn" onclick="saveFinalScore(${index}, ${data.choiceScore})">ລວມແລະບັນທຶກຄະແນນ</button>
+                            
+                            <div id="result_${index}" style="display:none; margin-top:15px; padding:10px; background:#d4edda; color:#155724; border-radius:5px;"></div>
+                        </div>
+                    `;
+                    container.innerHTML += cardHtml;
+                });
+            } catch (err) {
+                container.innerHTML = "<p style='color:red;'>ເກີດຂໍ້ຜິດພາດໃນການໂຫຼດຂໍ້ມູນ</p>";
+            }
+        }
+
+        function saveFinalScore(index, choiceScore) {
+            const s1 = parseFloat(document.getElementById(`s1_${index}`).value) || 0;
+            const s2 = parseFloat(document.getElementById(`s2_${index}`).value) || 0;
+            const s3 = parseFloat(document.getElementById(`s3_${index}`).value) || 0;
+            const essayTotal = s1 + s2 + s3;
+            const grandTotal = choiceScore + essayTotal;
+
+            const resCard = document.getElementById(`result_${index}`);
+            resCard.style.display = 'block';
+            resCard.innerHTML = `
+                <b>📊 ຜົນຮັບຄະແນນສຸດທ້າຍ:</b> 
+                ຄະແນນຕົວເລືອກ ${choiceScore} + ຄະແນນຄຳຕອບ ${essayTotal} = <b>${grandTotal} / 6 ຄະແນນ</b>
+            `;
+        }
+
+        loadSubmissions();
+    </script>
+</body>
+</html>
